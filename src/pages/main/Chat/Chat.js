@@ -1,22 +1,71 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../../../components/Navbar";
 import styles from "./Chat.module.css";
 import { Container, Form, Row, Col } from "react-bootstrap";
 
 function Chat(props) {
   // const [username, setUsername] = useState("");
+  const userName = localStorage.getItem("token")
   const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [room, setRoom] = useState({
+    new: "",
+    old: "",
+  });
+
+  useEffect(() => {
+    if (props.socket) {
+      props.socket.on("chatMessage", (dataMessage) => {
+        setMessages([...messages, dataMessage])
+      })
+    }
+  }, [props.socket, messages])
 
   const handleSelectRoom = (event) => {
-    console.log(event.target.value);
-  };
+    // if (room.old) {
+    //   console.log("sudah pernah masuk ke room " + room.old);
+    //   console.log("dan akan masuk ke room " + event.target.value);
+    // } else {
+    //   console.log("belum pernah masuk ke ruang manapun");
+    //   console.log("dan akan masuk ke room " + event.target.value);
+    // }
+
+    props.socket.emit("joinRoom", {
+      room: event.target.value,
+      oldRoom: room.old,
+      userName, // userName: userName
+    })
+    setRoom({ 
+      ...room,
+      new: event.target.value,
+      old: event.target.value,
+    })
+  }
 
   const handleChangeText = (event) => {
     setMessage(event.target.value);
   };
 
   const handleSendMessage = () => {
+    console.log("Username :", userName);
+    console.log("Room :", room)
     console.log("Send Message :", message);
+    // const setData = {
+    //   userName,
+    //   message
+    // }
+    // props.socket.emit("globalMessage", setData)
+    // props.socket.emit("privateMessage", setData)
+    // props.socket.emit("broadCastMessage", setData)
+    const setData = {
+      room: room.new,
+      userName,
+      message,
+    };
+    // 1. menjalankan proses socket io
+    props.socket.emit("roomMessage", setData);
+    // 2. menjalankan proses axios post data ke table ?
+    setMessage("");
   };
 
   return (
@@ -54,16 +103,19 @@ function Chat(props) {
           <div className={styles.chat}>
             <div className={styles.chatWindow}>
               <div className={styles.output}>
-                <p>
-                  <strong>Bagus : </strong>
-                  Hai !
-                </p>
+                {messages.map((item, index) => (
+                  <p key={index}>
+                    <strong>{item.userName} : </strong>
+                    {item.message}
+                  </p>
+                ))}
               </div>
             </div>
             <input
               className={styles.inputMessage}
               onChange={(event) => handleChangeText(event)}
               type="text"
+              value={message}
               placeholder="Message"
             />
             <button onClick={handleSendMessage} className={styles.btnSubmit}>
